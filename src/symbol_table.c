@@ -4,7 +4,7 @@
 
 #include "symbol_table.h"
 
-void symbol_table_init(SymbolTable *table)
+void symbol_table_init_scope(SymbolTable *table, SymbolTable *parent)
 {
     if (table == NULL)
     {
@@ -14,6 +14,12 @@ void symbol_table_init(SymbolTable *table)
     table->symbols = NULL;
     table->count = 0;
     table->capacity = 0;
+    table->parent = parent;
+}
+
+void symbol_table_init(SymbolTable *table)
+{
+    symbol_table_init_scope(table, NULL);
 }
 
 void symbol_table_free(SymbolTable *table)
@@ -33,9 +39,10 @@ void symbol_table_free(SymbolTable *table)
     table->symbols = NULL;
     table->count = 0;
     table->capacity = 0;
+    table->parent = NULL;
 }
 
-const Symbol *symbol_table_find(
+const Symbol *symbol_table_find_local(
     const SymbolTable *table,
     const char *name)
 {
@@ -55,6 +62,30 @@ const Symbol *symbol_table_find(
     return NULL;
 }
 
+const Symbol *symbol_table_find(
+    const SymbolTable *table,
+    const char *name)
+{
+    if (name == NULL)
+    {
+        return NULL;
+    }
+
+    for (const SymbolTable *scope = table;
+         scope != NULL;
+         scope = scope->parent)
+    {
+        const Symbol *symbol = symbol_table_find_local(scope, name);
+
+        if (symbol != NULL)
+        {
+            return symbol;
+        }
+    }
+
+    return NULL;
+}
+
 int symbol_table_add(
     SymbolTable *table,
     const char *name,
@@ -66,7 +97,9 @@ int symbol_table_add(
         return 0;
     }
 
-    if (symbol_table_find(table, name) != NULL)
+    /* Impede duplicatas apenas no escopo atual.
+       Uma variável local pode ocultar uma variável externa. */
+    if (symbol_table_find_local(table, name) != NULL)
     {
         return 0;
     }
@@ -74,8 +107,8 @@ int symbol_table_add(
     if (table->count == table->capacity)
     {
         int new_capacity = table->capacity == 0
-                               ? 4
-                               : table->capacity * 2;
+                              ? 4
+                              : table->capacity * 2;
 
         Symbol *new_symbols = realloc(
             table->symbols,
@@ -105,6 +138,7 @@ int symbol_table_add(
     symbol.type = type;
     symbol.is_constant = is_constant;
     symbol.integer_value = 0;
+    symbol.boolean_value = 0;
 
     table->symbols[table->count] = symbol;
     table->count++;
@@ -112,30 +146,47 @@ int symbol_table_add(
     return 1;
 }
 
-int symbol_table_set_integer(SymbolTable *table, const char *name, long value)
+static Symbol *symbol_table_find_mutable(
+    SymbolTable *table,
+    const char *name)
 {
     if (table == NULL || name == NULL)
+    {
+        return NULL;
+    }
+
+    for (SymbolTable *scope = table;
+         scope != NULL;
+         scope = scope->parent)
+    {
+        for (int i = 0; i < scope->count; i++)
+        {
+            if (strcmp(scope->symbols[i].name, name) == 0)
+            {
+                return &scope->symbols[i];
+            }
+        }
+    }
+
+    return NULL;
+}
+
+int symbol_table_set_integer(
+    SymbolTable *table,
+    const char *name,
+    long value)
+{
+    Symbol *symbol = symbol_table_find_mutable(table, name);
+
+    if (symbol == NULL ||
+        symbol->type != AST_TYPE_INT ||
+        symbol->is_constant)
     {
         return 0;
     }
 
-    for (int i = 0; i < table->count; i++)
-    {
-        Symbol *symbol = &table->symbols[i];
-
-        if (strcmp(symbol->name, name) == 0)
-        {
-            if (symbol->type != AST_TYPE_INT || symbol->is_constant)
-            {
-                return 0;
-            }
-
-            symbol->integer_value = value;
-            return 1;
-        }
-    }
-
-    return 0;
+    symbol->integer_value = value;
+    return 1;
 }
 
 int symbol_table_initialize_integer(
@@ -143,26 +194,47 @@ int symbol_table_initialize_integer(
     const char *name,
     long value)
 {
-    if (table == NULL || name == NULL)
+    Symbol *symbol = symbol_table_find_mutable(table, name);
+
+    if (symbol == NULL || symbol->type != AST_TYPE_INT)
     {
         return 0;
     }
 
-    for (int i = 0; i < table->count; i++)
+    symbol->integer_value = value;
+    return 1;
+}
+
+int symbol_table_set_boolean(
+    SymbolTable *table,
+    const char *name,
+    int value)
+{
+    Symbol *symbol = symbol_table_find_mutable(table, name);
+
+    if (symbol == NULL ||
+        symbol->type != AST_TYPE_BOOL ||
+        symbol->is_constant)
     {
-        Symbol *symbol = &table->symbols[i];
-
-        if (strcmp(symbol->name, name) == 0)
-        {
-            if (symbol->type != AST_TYPE_INT)
-            {
-                return 0;
-            }
-
-            symbol->integer_value = value;
-            return 1;
-        }
+        return 0;
     }
 
-    return 0;
+    symbol->boolean_value = value != 0;
+    return 1;
+}
+
+int symbol_table_initialize_boolean(
+    SymbolTable *table,
+    const char *name,
+    int value)
+{
+    Symbol *symbol = symbol_table_find_mutable(table, name);
+
+    if (symbol == NULL || symbol->type != AST_TYPE_BOOL)
+    {
+        return 0;
+    }
+
+    symbol->boolean_value = value != 0;
+    return 1;
 }
