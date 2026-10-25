@@ -1,0 +1,1 @@
+lock int: limite = 10 / 0;
