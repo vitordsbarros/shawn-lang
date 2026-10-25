@@ -144,6 +144,7 @@ shawnLang/
 
 ## Roadmap
 
+- [x] Complete assignment validation and execution.
 - [ ] Complete integration of parsing, semantic analysis, and program execution.
 - [ ] Expand support for data types and runtime behavior.
 - [ ] Improve syntax, semantic, and runtime error reporting.
