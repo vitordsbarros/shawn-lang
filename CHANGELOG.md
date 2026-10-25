@@ -40,7 +40,7 @@ Shawn is an experimental interpreted programming language written in C. The proj
 - Full language and runtime integration remains under development.
 - Functions and broader data type support remain planned.
 
-## [0.2.0] - 2026-10-24
+## [0.2.0] - 2026-10-25
 
 ### Added
 - Integer assignments with arithmetic expressions and variable references.

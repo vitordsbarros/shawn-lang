@@ -129,7 +129,7 @@ mingw32-make clean
 ## Project Structure
 
 ```text
-shawn-lang/
+shawnLang/
 ├── include/    # Header files
 ├── src/        # Interpreter components
 ├── tests/      # Automated test suite
