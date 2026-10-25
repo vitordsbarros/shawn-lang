@@ -1,3 +1,6 @@
+# Pasta do vscode
+.vscode/
+
 # Executaveis e arquivos compilados
 build/
 *.exe

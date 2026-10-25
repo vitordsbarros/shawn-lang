@@ -316,7 +316,6 @@ ASTNode *parser_parse_expression(Parser *parser)
     return root;
 }
 
-
 /* Analisa uma atribuição ou declaração de variável/constante. */
 ASTNode *parser_parse_statement(Parser *parser)
 {
@@ -405,7 +404,10 @@ ASTNode *parser_parse_statement(Parser *parser)
 
         parser_advance(parser);
 
-        if (parser->current_token.type != TOKEN_EOF)
+        if (parser->current_token.type != TOKEN_EOF &&
+            parser->current_token.type != TOKEN_SET &&
+            parser->current_token.type != TOKEN_LOCK &&
+            parser->current_token.type != TOKEN_IDENTIFIER)
         {
             free(name);
             ast_free(value);
@@ -482,7 +484,10 @@ ASTNode *parser_parse_statement(Parser *parser)
 
     parser_advance(parser);
 
-    if (parser->current_token.type != TOKEN_EOF)
+    if (parser->current_token.type != TOKEN_EOF &&
+        parser->current_token.type != TOKEN_SET &&
+        parser->current_token.type != TOKEN_LOCK &&
+        parser->current_token.type != TOKEN_IDENTIFIER)
     {
         free(name);
         ast_free(value);

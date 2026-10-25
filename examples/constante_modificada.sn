@@ -1,0 +1,2 @@
+lock int: limite = 100;
+limite = 200;
