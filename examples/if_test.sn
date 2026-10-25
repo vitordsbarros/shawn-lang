@@ -1,0 +1,8 @@
+set int: idade = 20;
+set int: acesso = 0;
+
+if (idade >= 18) {
+    acesso = 1;
+} else {
+    acesso = 0;
+}

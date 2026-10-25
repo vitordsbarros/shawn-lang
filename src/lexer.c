@@ -1,18 +1,7 @@
+
+#include <ctype.h>
+#include <stddef.h>
 #include "lexer.h"
-
-void lexer_init(Lexer *lexer, const char *source)
-{
-    lexer->source = source;
-
-    lexer->start = 0;
-    lexer->current = 0;
-
-    lexer->line = 1;
-    lexer->column = 1;
-
-    lexer->start_line = 1;
-    lexer->start_column = 1;
-}
 
 static char lexer_peek(const Lexer *lexer)
 {
@@ -23,21 +12,19 @@ static char lexer_advance(Lexer *lexer)
 {
     char c = lexer->source[lexer->current];
 
-    if (c == '\0')
+    if (c != '\0')
     {
-        return '\0';
-    }
+        lexer->current++;
 
-    lexer->current++;
-
-    if (c == '\n')
-    {
-        lexer->line++;
-        lexer->column = 1;
-    }
-    else
-    {
-        lexer->column++;
+        if (c == '\n')
+        {
+            lexer->line++;
+            lexer->column = 1;
+        }
+        else
+        {
+            lexer->column++;
+        }
     }
 
     return c;
@@ -45,19 +32,25 @@ static char lexer_advance(Lexer *lexer)
 
 static void lexer_skip_whitespace(Lexer *lexer)
 {
-    char c = lexer_peek(lexer);
-
-    while (c == ' ' ||
-           c == '\t' ||
-           c == '\n' ||
-           c == '\r' ||
-           c == '\f' ||
-           c == '\v')
+    while (isspace((unsigned char)lexer_peek(lexer)))
     {
-
         lexer_advance(lexer);
-        c = lexer_peek(lexer);
     }
+}
+
+static int lexer_is_alpha(char c)
+{
+    return isalpha((unsigned char)c) || c == '_';
+}
+
+static int lexer_is_digit(char c)
+{
+    return isdigit((unsigned char)c);
+}
+
+static int lexer_is_identifier_char(char c)
+{
+    return lexer_is_alpha(c) || lexer_is_digit(c);
 }
 
 static Token lexer_make_token(Lexer *lexer, TokenType type)
@@ -73,23 +66,6 @@ static Token lexer_make_token(Lexer *lexer, TokenType type)
     return token;
 }
 
-static int lexer_is_alpha(char c)
-{
-    return (c >= 'a' && c <= 'z') ||
-           (c >= 'A' && c <= 'Z') ||
-           c == '_';
-}
-
-static int lexer_is_digit(char c)
-{
-    return c >= '0' && c <= '9';
-}
-
-static int lexer_is_identifier_char(char c)
-{
-    return lexer_is_alpha(c) || lexer_is_digit(c);
-}
-
 static TokenType lexer_keyword_type(const char *start, size_t length)
 {
     if (length == 3 && start[0] == 's' &&
@@ -103,6 +79,32 @@ static TokenType lexer_keyword_type(const char *start, size_t length)
         start[3] == 'k')
     {
         return TOKEN_LOCK;
+    }
+
+    if (length == 2 && start[0] == 'i' && start[1] == 'f')
+    {
+        return TOKEN_IF;
+    }
+
+    if (length == 4 && start[0] == 'e' &&
+        start[1] == 'l' && start[2] == 's' &&
+        start[3] == 'e')
+    {
+        return TOKEN_ELSE;
+    }
+
+    if (length == 4 && start[0] == 't' &&
+        start[1] == 'r' && start[2] == 'u' &&
+        start[3] == 'e')
+    {
+        return TOKEN_TRUE;
+    }
+
+    if (length == 5 && start[0] == 'f' &&
+        start[1] == 'a' && start[2] == 'l' &&
+        start[3] == 's' && start[4] == 'e')
+    {
+        return TOKEN_FALSE;
     }
 
     if (length == 3 && start[0] == 'i' &&
@@ -139,6 +141,17 @@ static TokenType lexer_keyword_type(const char *start, size_t length)
     }
 
     return TOKEN_IDENTIFIER;
+}
+
+void lexer_init(Lexer *lexer, const char *source)
+{
+    lexer->source = source;
+    lexer->start = 0;
+    lexer->current = 0;
+    lexer->line = 1;
+    lexer->column = 1;
+    lexer->start_line = 1;
+    lexer->start_column = 1;
 }
 
 Token lexer_next_token(Lexer *lexer)
@@ -207,15 +220,73 @@ Token lexer_next_token(Lexer *lexer)
     {
     case '=':
         lexer_advance(lexer);
+
+        if (lexer_peek(lexer) == '=')
+        {
+            lexer_advance(lexer);
+            return lexer_make_token(lexer, TOKEN_EQUAL);
+        }
+
         return lexer_make_token(lexer, TOKEN_ASSIGN);
+
+    case '!':
+        lexer_advance(lexer);
+
+        if (lexer_peek(lexer) == '=')
+        {
+            lexer_advance(lexer);
+            return lexer_make_token(lexer, TOKEN_NOT_EQUAL);
+        }
+
+        return lexer_make_token(lexer, TOKEN_LOGICAL_NOT);
+
+    case '&':
+        lexer_advance(lexer);
+
+        if (lexer_peek(lexer) == '&')
+        {
+            lexer_advance(lexer);
+            return lexer_make_token(lexer, TOKEN_LOGICAL_AND);
+        }
+
+        return lexer_make_token(lexer, TOKEN_INVALID);
+
+    case '|':
+        lexer_advance(lexer);
+
+        if (lexer_peek(lexer) == '|')
+        {
+            lexer_advance(lexer);
+            return lexer_make_token(lexer, TOKEN_LOGICAL_OR);
+        }
+
+        return lexer_make_token(lexer, TOKEN_INVALID);
+
+    case '>':
+        lexer_advance(lexer);
+
+        if (lexer_peek(lexer) == '=')
+        {
+            lexer_advance(lexer);
+            return lexer_make_token(lexer, TOKEN_GREATER_EQUAL);
+        }
+
+        return lexer_make_token(lexer, TOKEN_GREATER);
+
+    case '<':
+        lexer_advance(lexer);
+
+        if (lexer_peek(lexer) == '=')
+        {
+            lexer_advance(lexer);
+            return lexer_make_token(lexer, TOKEN_LESS_EQUAL);
+        }
+
+        return lexer_make_token(lexer, TOKEN_LESS);
 
     case ':':
         lexer_advance(lexer);
         return lexer_make_token(lexer, TOKEN_COLON);
-
-    case ';':
-        lexer_advance(lexer);
-        return lexer_make_token(lexer, TOKEN_SEMICOLON);
 
     case '+':
         lexer_advance(lexer);
@@ -240,6 +311,18 @@ Token lexer_next_token(Lexer *lexer)
     case ')':
         lexer_advance(lexer);
         return lexer_make_token(lexer, TOKEN_RPAREN);
+
+    case '{':
+        lexer_advance(lexer);
+        return lexer_make_token(lexer, TOKEN_LBRACE);
+
+    case '}':
+        lexer_advance(lexer);
+        return lexer_make_token(lexer, TOKEN_RBRACE);
+
+    case ';':
+        lexer_advance(lexer);
+        return lexer_make_token(lexer, TOKEN_SEMICOLON);
 
     default:
         lexer_advance(lexer);

@@ -261,8 +261,70 @@ int main(void)
         return 1;
     }
 
+
     printf(
         "Teste 6 aprovado: divisao por zero rejeitada sem registrar variavel.\n");
+
+    /* Teste 7: preservar o valor apos atribuicao com divisao por zero */
+    ASTNode *resultado_declaration = ast_new_variable_declaration(
+        "resultado",
+        AST_TYPE_INT,
+        ast_new_integer(10));
+
+    if (resultado_declaration == NULL)
+    {
+        fprintf(stderr, "Falha ao criar declaracao de resultado.\n");
+        symbol_table_free(&table);
+        return 1;
+    }
+
+    if (!semantic_analyze(resultado_declaration, &table))
+    {
+        fprintf(stderr, "Erro: declaracao de resultado foi rejeitada.\n");
+        ast_free(resultado_declaration);
+        symbol_table_free(&table);
+        return 1;
+    }
+
+    ast_free(resultado_declaration);
+
+    assignment = ast_new_assignment(
+        "resultado",
+        ast_new_binary(
+            AST_OP_DIVIDE,
+            ast_new_identifier("resultado"),
+            ast_new_integer(0)));
+
+    if (assignment == NULL)
+    {
+        fprintf(stderr, "Falha ao criar atribuicao com divisao por zero.\n");
+        symbol_table_free(&table);
+        return 1;
+    }
+
+    if (semantic_analyze(assignment, &table))
+    {
+        fprintf(stderr, "Erro: atribuicao com divisao por zero foi aceita.\n");
+        ast_free(assignment);
+        symbol_table_free(&table);
+        return 1;
+    }
+
+    ast_free(assignment);
+
+    const Symbol *resultado = symbol_table_find(&table, "resultado");
+
+    if (resultado == NULL || resultado->integer_value != 10)
+    {
+        fprintf(
+            stderr,
+            "Erro: valor de resultado foi alterado apos atribuicao invalida.\n");
+        symbol_table_free(&table);
+        return 1;
+    }
+
+    printf(
+        "Teste 7 aprovado: atribuicao invalida preserva o valor anterior.\n");
 
     symbol_table_free(&table);
 
